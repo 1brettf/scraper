@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, send_file, session, redirect, jsonify, Response, make_response
-from constants import MAX_FEED_LENGTH
+from constants import MAX_FEED_LENGTH, DEFAULT_SOURCES
 from _thread import start_new_thread
 from scraper import start_scraper
 import json
@@ -19,6 +19,13 @@ app.secret_key = b'change this for production'
 @app.route('/', methods=["GET"])
 def index():
     resp = make_response(render_template("index.html"))
+    resp.set_cookie('userID', get_uuid(request))
+    return resp
+
+
+@app.route('/settings', methods=["GET"])
+def settings():
+    resp = make_response(render_template("settings.html"))  # Need to change
     resp.set_cookie('userID', get_uuid(request))
     return resp
 
@@ -53,7 +60,7 @@ def post():
         pickle.dump({}, open("users.data", "wb"))
     userdata = pickle.load(open("users.data", "rb"))
     if userid not in userdata:
-        userdata[userid] = {"saved": [], "skipped": [], "read": [], "tags": {}, "url_dict": {}}
+        userdata[userid] = {"saved": [], "skipped": [], "read": [], "tags": {}, "url_dict": {}, "sources": DEFAULT_SOURCES}
     if type(json_data) != dict or "request_type" not in json_data:
         return Response(json.dumps({'Error': 'Bad Request'}), status=400, mimetype='application/json')
     elif json_data["request_type"] == "feed":
@@ -116,6 +123,16 @@ def post():
         userdata[userid]["tags"] = json_data["tags"]
         pickle.dump(userdata, open("users.data", "wb"))
         return Response(json.dumps({'Success': True}), status=200, mimetype='application/json')
+    elif json_data["request_type"] == "set_sources":
+        if "sources" not in json_data or type(json_data["sources"]) != list:
+            return Response(json.dumps({'Error': 'Bad Request'}), status=400, mimetype='application/json')
+        else:
+            """
+            Saving Sources (User-Based)
+            """
+            userdata[userid]["sources"] = json_data["sources"]
+            pickle.dump(userdata, open("users.data", "wb"))
+            return Response(json.dumps({'Success': True}), status=200, mimetype='application/json')
     elif json_data["request_type"] == "get_info":
         print([json.dumps(userdata[userid])])
         return Response(json.dumps(userdata[userid]), status=200, mimetype='application/json')

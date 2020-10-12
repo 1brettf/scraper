@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>myFilter/skipped</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" type="text/css" href="/static/css/main.css" />
+  <script async defer data-domain="dev.myfilter.io" src="https://plausible.io/js/plausible.js"></script>
+</head>
+    <div class="navbar">
+      <div class="dropdown">
+        <button class="dropbtn">Settings
+          <i class="fa fa-caret-down"></i>
+        </button>
+        <div class="dropdown-content">
+          <a href="/">Latest</a>
+          <a href="/saved">Saved</a>
+            <a href="/skipped">Skipped</a>
+          <a href="/read">Read</a>
+        </div>
+      </div>
+    </div>
+  <body>
+<div style="text-align: center;"><h1>Choose News Sources</h1></div>
+<div id="feed"></div>
+<script>
+// Obfuscate + Minify code for production?
+
+function removeDuplicates(array) {
+  return array.filter((a, b) => array.indexOf(a) === b)
+}
+
+function remove_element(my_list, element) {
+  my_list.splice(my_list.indexOf(element), 1);
+  return my_list
+}
+
+function display_sources(){
+    let checked;
+    document.getElementById("feed").innerHTML = "";
+    for (let i = 0, size = window.sources.length; i < size; i++) {
+        let source = window.sources[i];
+        if (window.my_data.sources.indexOf(source) === -1) {
+            checked = "";
+        }
+        else {
+            checked = " checked";
+        }
+        document.getElementById("feed").innerHTML += "<div class='item'><input type=\"checkbox\" id=\"" + source + "\" onclick=\"update()\"" + checked + ">    " + source + "</div>";
+    }
+    //<input type="checkbox" id="randomstuff1" value="cats" />
+}
+
+function update(){
+    let sources_list = [];
+    for (let x = 0; x < document.getElementsByTagName('input').length; x++) {
+        if (document.getElementsByTagName('input').item(x).checked === true) {
+            sources_list.push(document.getElementsByTagName('input').item(x).id);
+        }
+    }
+    window.sources = sources_list;
+    let xhr = new XMLHttpRequest();
+    xhr.open("POST", "/post", true);
+    xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+    xhr.send(JSON.stringify({"request_type": "set_sources", "sources": sources_list}));
+    console.log(sources_list);
+}
+
+let xhr = new XMLHttpRequest();
+xhr.open("POST", "/post", true);
+xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+xhr.onloadend = function () {
+    let sources_list=[];
+    window.feed = JSON.parse(xhr.responseText);
+    for (let i = 0, size = window.feed.length; i < size; i++) {
+        if (sources_list.indexOf(window.feed[i].source) === -1) {
+            sources_list.push(window.feed[i].source);
+        }
+    }
+    console.log(sources_list);
+    window.sources = sources_list;
+    let xhr2 = new XMLHttpRequest();
+    xhr2.open("POST", "/post", true);
+    xhr2.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+    xhr2.onloadend = function () {
+        window.my_data = JSON.parse(xhr2.responseText);
+        display_sources();
+    }
+    xhr2.send('{"request_type": "get_info"}');
+};
+xhr.send('{"request_type": "feed"}');
+</script>
+</body>
+</html>
